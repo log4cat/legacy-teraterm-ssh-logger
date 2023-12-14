@@ -1,0 +1,194 @@
+; TeraTerm Macro - 作業者名、サーバー、Linuxユーザー、パスワードをリストから読み込んで自動的にログを取る
+; このマクロで使うuserlist.iniはユーザー名とパスワードをそのまま記載するため、他環境での使用はご注意ください
+; iniファイルはShift_JIS限定(TeraTerm 4の仕様)
+
+operator = ''
+server = ''
+user = ''
+password = ''
+
+operatorfile = 'operatorlist.ini'
+serverfile = 'serverlist.ini'
+userfile = 'userlist.ini'
+
+
+; 作業者名リストの行数をカウントする
+fileopen fhandle operatorfile 0
+
+count = 0
+i = 0
+while
+  filereadln fhandle fileline
+  if result = 1 break
+  count = count + 1
+endwhile
+
+fileclose fhandle
+
+
+; 作業者名リストを読み込む
+strdim operatorlist count
+
+fileopen fhandle operatorfile 0
+
+i = 0
+while count - i
+  filereadln fhandle operatorlist[i]
+  i = i + 1
+endwhile
+
+fileclose fhandle
+
+
+; 作業者名を選択する
+listbox '作業者名を選択してください。(自分の名前が無い場合はoperatorlist.iniに追記)' '作業者選択' operatorlist
+
+if result = -1 then
+  end
+endif
+
+; 作業者名を変数に設定
+operator = operatorlist[result]
+
+
+; サーバーリストの行数をカウントする
+fileopen fhandle serverfile 0
+
+count = 0
+i = 0
+while
+  filereadln fhandle fileline
+  if result = 1 break
+  count = count + 1
+endwhile
+
+fileclose fhandle
+
+
+; サーバーリストを読み込む
+strdim serverlist count
+
+fileopen fhandle serverfile 0
+
+i = 0
+while count - i
+  filereadln fhandle serverlist[i]
+  i = i + 1
+endwhile
+
+fileclose fhandle
+
+
+; サーバーを選択する
+; サーバー情報は hostname:ipaddressの形式とする
+
+listbox 'サーバー情報を選択してください。' 'サーバー選択' serverlist
+
+if result = -1 then
+  end
+endif
+
+; 選択されたサーバー情報を変数に設定
+serverip = serverlist[result]
+
+; 選択されたサーバー情報を変数に設定
+; サーバー情報をホスト名とIPアドレスに分割する
+; splitはシステム変数 groupmatchstr1 ～ groupmatchstr9 に返す
+strsplit serverip ':' 2
+hostname = groupmatchstr1
+ipaddress = groupmatchstr2
+
+
+; Linuxユーザーリストの行数をカウントする
+fileopen fhandle userfile 0
+
+count = 0
+i = 0
+while
+  filereadln fhandle fileline
+  if result = 1 break
+  count = count + 1
+endwhile
+
+fileclose fhandle
+
+
+; Linuxユーザーリストを読み込む
+strdim userlist count
+
+fileopen fhandle userfile 0
+
+i = 0
+while count - i
+  filereadln fhandle userlist[i]
+  i = i + 1
+endwhile
+
+fileclose fhandle
+
+
+; Linuxユーザーを選択する
+; Linuxユーザー情報は "hostname username password"の形式とする
+listbox 'Linuxユーザー情報を選択してください。' 'ユーザー・パスワード選択' userlist
+
+if result = -1 then
+  end
+endif
+
+; 選択されたLinuxユーザー情報を変数に設定
+userpass = userlist[result]
+
+; Linuxユーザー情報のユーザー名とパスワードに分割する
+; splitはシステム変数 groupmatchstr1 ～ groupmatchstr9 に返す
+strsplit userpass ' ' 3
+user = groupmatchstr2
+password = groupmatchstr3
+
+
+; ホスト名、日時、ユーザー、作業者をログに追記
+logFileName = ''
+logDirectory = ''
+logFullPath = ''
+
+gettime datetime "%Y-%m-%d-%H%M%S" "JST"
+getdir logDirectory
+strconcat logDirectory "\\log\\"
+
+strconcat logFileName hostname
+strconcat logFileName "_"
+strconcat logFileName datetime
+strconcat logFileName "_"
+strconcat logFileName operator
+strconcat logFileName "_"
+strconcat logFileName user
+strconcat logFileName "_"
+strconcat logFileName ".log"
+
+logFullPath = logDirectory
+strconcat logFullPath logFileName
+
+; サーバーにSSHアクセスする
+command = ipaddress
+strconcat command ':22 /ssh /2 /auth=password /user='
+strconcat command user
+strconcat command ' /passwd='
+strconcat command password
+connect command
+
+; ログ自動記録設定されていたらログを閉じる
+loginfo dummy
+if result != -1 then
+  logclose
+endif
+
+; ログ記録開始
+logopen logFullPath 0 0
+
+; 変数クリア
+operator = ''
+server = ''
+user = ''
+password = ''
+logFileName = ''
+logDirectory = ''
+datetime = ''
