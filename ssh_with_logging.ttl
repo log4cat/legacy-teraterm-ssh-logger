@@ -161,7 +161,6 @@ strconcat logFileName "_"
 strconcat logFileName operator
 strconcat logFileName "_"
 strconcat logFileName user
-strconcat logFileName "_"
 strconcat logFileName ".log"
 
 logFullPath = logDirectory
